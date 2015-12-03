@@ -1,0 +1,30 @@
+module slookup #(parameter numpts=8)
+	        (input req, clk,
+           input [9:0] x, y, z, xc, yc, zc,
+	         output reg [2:0] sound,
+           output reg done);
+
+  reg state = 1'b0;
+  reg [19:0] distsq = 0;
+  reg [9:0] xd, yd, zd
+  reg [7:0] count = 0;
+  always @(posedge clk)begin
+    if(req)begin
+      state <= 1;
+      count <= 0;
+      done <= 0;
+    end
+    else if(state == 1)begin//run
+      xd <= x[count]>xc ? x[count]-xc : xc-x[count];
+      yd <= y[count]>yc ? y[count]-yc : yc-y[count];
+      zd <= z[count]>zc ? z[count]-zc : zc-z[count];
+      distsq <= xd*xd + yd*yd + zd*zd;
+      
+      if(count == numpts+1)begin
+        state <= 0;
+        done <= 1;
+      end
+    end
+  end
+      
+endmodule
