@@ -1,17 +1,48 @@
-module divclk #(parameter DIV=27)   // 1MHz with a 27Mhz clock
+module clkdiv #(parameter DIV=27)   // 1MHz with a 27Mhz clock
           (input clk,
-           output clkdiv)
+           output clkdiv);
            
-  reg count = 0;
+  reg [4:0] count = 0;
   reg tout = 1'b1;
   always @(posedge clk)begin
-    if(count==DIV)begin
+    count <= count+1;
+    if(count==DIV-1)begin
       count <= 0;
       tout <= 1;
     end
-    else if(count==(DIV>>1))
+    else if(count==(DIV>>1)-1)
       tout <= 0;
   end
   
   assign clkdiv = tout;
+endmodule
+
+////////////////////////////////////////////////////////
+
+module clkdiv_tb;
+
+	// Inputs
+	reg clk;
+
+	// Outputs
+	wire clkdiv;
+
+	// Instantiate the Unit Under Test (UUT)
+	clkdiv #(.DIV(5)) uut (
+		.clk(clk), 
+		.clkdiv(clkdiv)
+	);
+  
+  always #5 clk = !clk;
+	initial begin
+		// Initialize Inputs
+		clk = 0;
+
+		// Wait 100 ns for global reset to finish
+		#100;
+        
+		// Add stimulus here
+
+	end
+      
 endmodule
