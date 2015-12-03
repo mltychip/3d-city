@@ -1,0 +1,65 @@
+module gamecubein 
+	        (input req, clk, 
+           input ctrlin,
+           output ctrlout,
+	         output reg [7:0] btn1, btn2, Jx, Jy, Cx, Cy, Bl, Br);//128 is zeroed
+           
+           //btn1: 0  0  0  S  Y  X  B  A
+           //btn2: 1  L  R  Z  Du Dd Dr Dl
+
+  parameter S_IDLE = 2'd0;
+  parameter S_REQ  = 2'd1;
+  parameter S_WAIT = 2'd2;
+  parameter S_REC  = 2'd3;
+
+  /*reg [1:0] s, sn;
+  reg exp;
+  always @(*)begin//state machine
+    case (s)
+      S_IDLE: sn = req ? S_REQ : S_IDLE;
+      S_REQ:  sn = S_WAIT;
+      S_WAIT: sn = exp ? S_IDLE : S_REC;
+      S_REC:  sn = S_IDLE;
+    endcase
+  end*/
+  
+  reg [1:0] state = 2'd0;
+  reg [23:0] reqmsg = 24'h400302;
+  reg [63:0] data = 64'd0;
+  //reg [63:0] tdata = 64'd0;
+  reg [4:0] count = 5'd0;
+  reg [1:0] stream = 2'd0;
+  always @(posedge clock)begin//data pushing
+    //s <= sn;
+    
+    
+    case (state)
+      S_IDLE: state <= req ? S_REQ : S_IDLE;
+      
+      S_REQ: begin
+        
+      end
+      
+      S_WAIT: begin
+        
+      end
+      
+      S_REC: begin
+        
+      end
+      
+      default: begin
+      end
+    endcase
+  end
+  
+  assign btn1 = data[7:0];
+  assign btn2 = data[15:8];
+  assign Jx = data[23:16];
+  assign Jy = data[31:24];
+  assign Cx = data[39:32];
+  assign Cy = data[47:40];
+  assign Bl = data[55:48];
+  assign Br = data[63:56];
+  assign ctrlout = tout;
+endmodule
