@@ -13,5 +13,5 @@ module divclk #(parameter DIV=27)   // 1MHz with a 27Mhz clock
       tout <= 0;
   end
   
-  assign out = tout;
+  assign clkdiv = tout;
 endmodule
