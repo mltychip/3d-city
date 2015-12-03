@@ -2,7 +2,7 @@ module gamecubein
 	        (input req, clk, 
            input ctrlin,
            output ctrlout,
-	         output reg [7:0] btn1, btn2, Jx, Jy, Cx, Cy, Bl, Br);//128 is zeroed
+	         output [7:0] btn1, btn2, Jx, Jy, Cx, Cy, Bl, Br);//128 is zeroed
            
            //btn1: 0  0  0  S  Y  X  B  A
            //btn2: 1  L  R  Z  Du Dd Dr Dl
@@ -11,6 +11,7 @@ module gamecubein
   parameter S_REQ  = 2'd1;
   parameter S_WAIT = 2'd2;
   parameter S_REC  = 2'd3;
+  parameter REQMSG = 24'h400302;
 
   /*reg [1:0] s, sn;
   reg exp;
@@ -24,20 +25,37 @@ module gamecubein
   end*/
   
   reg [1:0] state = 2'd0;
-  reg [23:0] reqmsg = 24'h400302;
   reg [63:0] data = 64'd0;
-  //reg [63:0] tdata = 64'd0;
-  reg [4:0] count = 5'd0;
+  reg [63:0] tdata = 64'd0;
+  reg [5:0] count = 6'd0;
   reg [1:0] stream = 2'd0;
-  always @(posedge clock)begin//data pushing
+  reg tout = 0; //actual out=1 but pulldown inverts it
+  always @(posedge clk)begin//data pushing
     //s <= sn;
     
     
     case (state)
       S_IDLE: state <= req ? S_REQ : S_IDLE;
       
-      S_REQ: begin
-        
+      S_REQ: begin //data line usually 1; 0=0001; 1=0111
+        if(stream==0)
+          tout <= 1; //pull low
+        else if (stream<3)begin
+          if(count<24)
+            tout <= ~REQMSG[23-count];
+          else
+            tout <= 0; //terminate stream with "1"
+        end
+        else begin
+          tout <= 0;
+          count <= count+1; //when stream rolls over
+        end
+          
+        stream <= stream+1;
+        if(count==24 && stream==3)begin//done
+          count <= 0;
+          state <= S_WAIT;
+        end
       end
       
       S_WAIT: begin
@@ -62,4 +80,60 @@ module gamecubein
   assign Bl = data[55:48];
   assign Br = data[63:56];
   assign ctrlout = tout;
+endmodule
+
+/////////////////////////////////////////////////////
+
+module gamecubein_tb;
+
+	// Inputs
+	reg req;
+	reg clk;
+	reg ctrlin;
+
+	// Outputs
+	wire ctrlout;
+	wire [7:0] btn1;
+	wire [7:0] btn2;
+	wire [7:0] Jx;
+	wire [7:0] Jy;
+	wire [7:0] Cx;
+	wire [7:0] Cy;
+	wire [7:0] Bl;
+	wire [7:0] Br;
+
+	// Instantiate the Unit Under Test (UUT)
+	gamecubein uut (
+		.req(req), 
+		.clk(clk), 
+		.ctrlin(ctrlin), 
+		.ctrlout(ctrlout), 
+		.btn1(btn1), 
+		.btn2(btn2), 
+		.Jx(Jx), 
+		.Jy(Jy), 
+		.Cx(Cx), 
+		.Cy(Cy), 
+		.Bl(Bl), 
+		.Br(Br)
+	);
+  
+  always #5 clk = !clk;
+	initial begin
+		// Initialize Inputs
+		req = 0;
+		clk = 0;
+		ctrlin = 0;
+
+		// Wait 100 ns for global reset to finish
+		#100;
+        
+		// Add stimulus here
+    #2;
+    req = 1;
+    #10;
+    req = 0;
+
+	end
+      
 endmodule
