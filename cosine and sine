@@ -1,0 +1,121 @@
+module cosine(input signed [11:0] x,//signed 12bits (cosine only 10bits acc)
+              input clk, req,
+              output done,
+              output reg signed [17:0] y);//signed 18bits
+  
+  // cosine module which computes an aprox
+  // of a cosine with a 4th order polynomial
+  // 1-x^2((a+1)-ax^2) where a = 5*(1-3/pi)
+  
+  //2^17 - [[x^2/2^3]*[[2^16*(a+1)] - [[2^15*a]*[x^2/2^3]/2^16]]/2^16] =
+  //2^17*cos(pi/2*x/2^10) for 10bit input
+  
+  //Table[floor(2^17*cos(pi/2*x/2^10)),{x,0,1024,100}]
+  
+  //cos -1  0  1  0 -1
+  //sin  0 -1  0  1  0
+  
+  //cos {{2+x,-2<=x<-1},{-x,-1<=x<0},{x,0<=x<1},{2-x,1<=x<2}}
+  //sin {{-1-x,-2<=x<-1},{x+1,-1<=x<0},{1-x,0<=x<1},{x-1,1<=x<2}}
+  
+  parameter A = 13'd7384;
+  parameter B = 17'd80305;
+  
+  reg [1:0] state = 2'd0;
+  reg [19:0] xsq = 20'd0;
+  reg [35:0] ty = 36'd0; //operating var
+  reg neg = 1'b0;//out is neg
+  always @(posedge clk)begin
+    
+    case (state)
+      0: begin
+        if(req)begin//map xsq
+          if(x<-1024)begin
+            xsq <= (($signed(2048)+x)*($signed(2048)+x))>>3;
+            neg <= 1;
+          end
+          else if(x<$signed(0))begin
+            xsq <= (($signed(0)-x)*($signed(0)-x))>>3;
+            neg <= 0;
+          end
+          else if(x<1024)begin
+            xsq <= (x*x)>>3;
+            neg <= 0;
+          end
+          else begin
+            xsq <= ((2048-x)*(2048-x))>>3;
+            neg <= 1;
+          end
+          state <= 1;
+        end
+      end
+      
+      1:begin
+        ty <= B-((A*xsq[16:0])>>16);
+        state <= 2;
+      end
+      
+      2:begin
+        ty <= 17'h1FFFF-((xsq[16:0]*ty[16:0])>>16);
+        state <= 3;
+      end
+      
+      3:begin
+        y <= neg ? $signed(0)-$signed({1'b0,ty[16:0]}) : $signed({1'b0,ty[16:0]});//$signed({1'b0,ty})
+        state <= 0;
+      end
+      
+      default: state <= 0;
+      
+    endcase
+  end
+
+assign done = state==0;
+endmodule
+
+//////////////////////////////////////////////////////////////////////////////
+
+
+module cosine_tb;
+
+	// Inputs
+	reg signed [11:0] x;
+	reg clk;
+	reg req;
+
+	// Outputs
+  wire done;
+	wire signed [17:0] y;
+
+	// Instantiate the Unit Under Test (UUT)
+	cosine uut (
+		.x(x), 
+		.clk(clk), 
+		.req(req), 
+    .done(done),
+		.y(y)
+	);
+    integer i;
+  always #5 clk = !clk;
+	initial begin
+		// Initialize Inputs
+		x = 0;
+		clk = 0;
+		req = 0;
+
+		// Wait 100 ns for global reset to finish
+		#100;
+        
+		// Add stimulus here
+
+    //Table[floor(2^17*cos(pi/2*x/2^10)),{x,0,1024,100}]
+    for (i=-2000; i<=2000; i=i+100)begin
+      x = i;
+      req = 1;
+      #10;
+      req = 0;
+      #50;
+    end
+    
+  end
+endmodule
